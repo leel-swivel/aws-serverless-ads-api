@@ -12,16 +12,24 @@ Globals:
     LoggingConfig:
       LogFormat: JSON
 
-  Api:
-    StageName: dev
-    Auth:
-      DefaultAuthorizer: CognitoAuthorizer
-      Authorizers:
-        CognitoAuthorizer:
-          UserPoolArn: !GetAtt AdsUserPool.Arn
-
 Resources:
 
+  # ==========================
+  # API Gateway
+  # ==========================
+  AdsApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: dev
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt AdsUserPool.Arn
+
+  # ==========================
+  # Lambda Function
+  # ==========================
   AdsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -46,6 +54,7 @@ Resources:
         CreateAdApi:
           Type: Api
           Properties:
+            RestApiId: !Ref AdsApi
             Path: /api/v1/ads
             Method: POST
     Metadata:
@@ -57,27 +66,48 @@ Resources:
         EntryPoints:
           - handlers/createAd.ts
 
+  # ==========================
+  # DynamoDB
+  # ==========================
   AdsTable:
     Type: AWS::Serverless::SimpleTable
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       PrimaryKey:
         Name: id
         Type: String
 
+  # ==========================
+  # S3 Bucket
+  # ==========================
   AdsBucket:
     Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties: {}
 
+  # ==========================
+  # SNS Topic
+  # ==========================
   AdsTopic:
     Type: AWS::SNS::Topic
     Properties: {}
 
+  # ==========================
+  # Cognito User Pool
+  # ==========================
   AdsUserPool:
     Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       AutoVerifiedAttributes:
         - email
 
+  # ==========================
+  # Cognito App Client
+  # ==========================
   AdsUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -88,9 +118,10 @@ Resources:
         - ALLOW_REFRESH_TOKEN_AUTH
 
 Outputs:
+
   ApiEndpoint:
     Description: API Gateway endpoint URL
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/dev/api/v1/ads"
+    Value: !Sub "https://${AdsApi}.execute-api.${AWS::Region}.amazonaws.com/dev/api/v1/ads"
 
   UserPoolId:
     Description: Cognito User Pool ID
