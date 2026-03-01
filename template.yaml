@@ -59,32 +59,27 @@ Resources:
   AdsTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
-      TableName: AdsTable
       PrimaryKey:
         Name: id
         Type: String
 
   AdsBucket:
     Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub "ads-bucket-${AWS::AccountId}"
+    Properties: {}
 
   AdsTopic:
     Type: AWS::SNS::Topic
-    Properties:
-      TopicName: AdsTopic
+    Properties: {}
 
   AdsUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: AdsUserPool
       AutoVerifiedAttributes:
         - email
 
   AdsUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
-      ClientName: AdsUserPoolClient
       UserPoolId: !Ref AdsUserPool
       GenerateSecret: false
       ExplicitAuthFlows:
