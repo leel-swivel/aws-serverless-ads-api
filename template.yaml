@@ -13,6 +13,7 @@ Globals:
       LogFormat: JSON
 
   Api:
+    StageName: dev
     Auth:
       DefaultAuthorizer: CognitoAuthorizer
       Authorizers:
@@ -45,7 +46,7 @@ Resources:
         CreateAdApi:
           Type: Api
           Properties:
-            Path: /ads
+            Path: /api/v1/ads
             Method: POST
     Metadata:
       BuildMethod: esbuild
@@ -89,7 +90,7 @@ Resources:
 Outputs:
   ApiEndpoint:
     Description: API Gateway endpoint URL
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/ads"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/dev/api/v1/ads"
 
   UserPoolId:
     Description: Cognito User Pool ID
