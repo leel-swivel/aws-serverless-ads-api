@@ -12,18 +12,27 @@ Globals:
     LoggingConfig:
       LogFormat: JSON
 
+  Api:
+    Auth:
+      DefaultAuthorizer: CognitoAuthorizer
+      Authorizers:
+        CognitoAuthorizer:
+          UserPoolArn: !GetAtt AdsUserPool.Arn
+
 Resources:
   AdsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: .
-      Handler: src/handlers/createAd.handler
+      CodeUri: src/
+      Handler: handlers/createAd.handler
       Description: Create Ad Lambda
       Environment:
         Variables:
           ADS_TABLE: !Ref AdsTable
           ADS_BUCKET: !Ref AdsBucket
           ADS_TOPIC: !Ref AdsTopic
+          IMAGE_MAX_SIZE: 5242880
+          PRESIGNED_URL_EXPIRY: 3600
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref AdsTable
@@ -45,4 +54,59 @@ Resources:
         Target: "es2020"
         Sourcemap: true
         EntryPoints:
-          - src/handlers/createAd.ts
+          - handlers/createAd.ts
+
+  AdsTable:
+    Type: AWS::Serverless::SimpleTable
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: AdsTable
+      PrimaryKey:
+        Name: id
+        Type: String
+
+  AdsBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      BucketName: !Sub "ads-bucket-${AWS::AccountId}"
+
+  AdsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: AdsTopic
+
+
+  AdsUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: AdsUserPool
+      AutoVerifiedAttributes:
+        - email
+
+  AdsUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: AdsUserPoolClient
+      UserPoolId: !Ref AdsUserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/ads"
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref AdsUserPool
+
+  UserPoolClientId:
+    Description: Cognito App Client ID
+    Value: !Ref AdsUserPoolClient
