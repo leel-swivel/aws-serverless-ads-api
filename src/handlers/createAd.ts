@@ -21,6 +21,7 @@ export const handler = apiHandler(async (event: APIGatewayProxyEvent) => {
   const ad = await createAd({
     ...data,
     userId,
+    requestId
   });
 
   return success(ad, requestId, HTTP_STATUS.CREATED);
