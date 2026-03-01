@@ -20,6 +20,7 @@ Globals:
           UserPoolArn: !GetAtt AdsUserPool.Arn
 
 Resources:
+
   AdsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -46,7 +47,6 @@ Resources:
           Properties:
             Path: /ads
             Method: POST
-
     Metadata:
       BuildMethod: esbuild
       BuildProperties:
@@ -58,8 +58,6 @@ Resources:
 
   AdsTable:
     Type: AWS::Serverless::SimpleTable
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
     Properties:
       TableName: AdsTable
       PrimaryKey:
@@ -68,8 +66,6 @@ Resources:
 
   AdsBucket:
     Type: AWS::S3::Bucket
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
     Properties:
       BucketName: !Sub "ads-bucket-${AWS::AccountId}"
 
@@ -78,11 +74,8 @@ Resources:
     Properties:
       TopicName: AdsTopic
 
-
   AdsUserPool:
     Type: AWS::Cognito::UserPool
-    DeletionPolicy: Retain
-    UpdateReplacePolicy: Retain
     Properties:
       UserPoolName: AdsUserPool
       AutoVerifiedAttributes:
