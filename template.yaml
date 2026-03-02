@@ -43,6 +43,7 @@ Resources:
           ADS_TOPIC: !Ref AdsTopic
           IMAGE_MAX_SIZE: 5242880
           PRESIGNED_URL_EXPIRY: 3600
+          ALLOWED_IMAGE_TYPES: image/jpeg,image/png
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref AdsTable
