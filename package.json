@@ -1,30 +1,31 @@
 {
-    "name": "ads-api",
-    "version": "1.0.0",
-    "private": true,
-    "description": "AWS Serverless Ads API - Node.js + TypeScript",
-    "main": "dist/handlers/createAd.js",
-    "scripts": {
-        "build": "tsc",
-        "test": "jest"
-    },
-    "dependencies": {
-        "@aws-sdk/client-dynamodb": "^3.998.0",
-        "@aws-sdk/client-s3": "^3.998.0",
-        "@aws-sdk/client-sns": "^3.998.0",
-        "@aws-sdk/lib-dynamodb": "^3.998.0",
-        "@aws-sdk/s3-request-presigner": "^3.999.0",
-        "zod": "^4.3.6"
-    },
-    "devDependencies": {
-        "@types/aws-lambda": "^8.10.160",
-        "@types/jest": "^29.5.12",
-        "@types/node": "^24.0.0",
-        "aws-sdk-client-mock": "^2.0.0",
-        "esbuild": "^0.27.3",
-        "jest": "^29.7.0",
-        "ts-jest": "^29.1.1",
-        "ts-node": "^10.9.2",
-        "typescript": "^5.9.3"
-    }
+  "name": "ads-api",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AWS Serverless Ads API - Node.js + TypeScript",
+  "main": "dist/handlers/createAd.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.998.0",
+    "@aws-sdk/client-s3": "^3.998.0",
+    "@aws-sdk/client-sns": "^3.998.0",
+    "@aws-sdk/lib-dynamodb": "^3.998.0",
+    "@aws-sdk/s3-request-presigner": "^3.999.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.160",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^24.0.0",
+    "aws-sdk-client-mock": "^2.0.0",
+    "esbuild": "^0.27.3",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
 }
