@@ -20,7 +20,6 @@ export const handler = apiHandler(async (event: APIGatewayProxyEvent) => {
     })
   );
 
-  // Extract userId from Cognito authorizer
   const userId = event.requestContext.authorizer?.claims?.sub;
 
   if (!userId) {
@@ -35,7 +34,6 @@ export const handler = apiHandler(async (event: APIGatewayProxyEvent) => {
     throw new AppError("Unauthorized", 401);
   }
 
-  // Validate request body
   const validatedData = validate(createAdSchema, event.body);
 
   console.info(
@@ -47,7 +45,6 @@ export const handler = apiHandler(async (event: APIGatewayProxyEvent) => {
     })
   );
 
-  // Call service with clean separation
   const ad = await createAd(
     {
       ...validatedData,
