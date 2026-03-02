@@ -23,7 +23,7 @@ function parseBase64Image(base64: string): {
   mimeType: string;
   data: string;
 } {
-  const regex = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/;
+  const regex = /^data:(image\/[a-zA-Z+]+);base64,(.*)$/;
   const matches = regex.exec(base64);
 
   if (!matches) {
