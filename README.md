@@ -1,3 +1,8 @@
+## 🏗 Architecture Diagram
+
+![Architecture Diagram](./postman/diagram.png)
+
+
 # AWS Serverless Ads API
 
 A minimal serverless Ads API built with **Node.js + TypeScript** using AWS services.
