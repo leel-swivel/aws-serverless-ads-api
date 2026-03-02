@@ -2,7 +2,8 @@ import { APIGatewayProxyEvent } from "aws-lambda";
 import { handler } from "./createAd";
 import { createAd } from "../services/ad.service";
 import { validate } from "../utils/validate";
-import { success } from "../utils/response";
+import { success, failure } from "../utils/response";
+import { AppError } from "../utils/errors";
 
 jest.mock("../services/ad.service");
 jest.mock("../utils/validate");
@@ -11,6 +12,7 @@ jest.mock("../utils/response");
 const mockCreateAd = createAd as jest.Mock;
 const mockValidate = validate as jest.Mock;
 const mockSuccess = success as jest.Mock;
+const mockFailure = failure as jest.Mock;
 
 describe("CreateAd Handler", () => {
   const mockEvent = (overrides?: Partial<APIGatewayProxyEvent>) =>
@@ -34,6 +36,12 @@ describe("CreateAd Handler", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Default mock behavior for failure
+    mockFailure.mockImplementation((error: any) => ({
+      statusCode: error.statusCode || 500,
+      body: JSON.stringify({ message: error.message }),
+    }));
   });
 
   it("should create ad successfully", async () => {
@@ -76,7 +84,7 @@ describe("CreateAd Handler", () => {
     });
   });
 
-  it("should throw error if userId is missing", async () => {
+  it("should return 401 if userId is missing", async () => {
     const event = mockEvent({
       requestContext: {
         requestId: "req-123",
@@ -84,16 +92,20 @@ describe("CreateAd Handler", () => {
       } as any,
     });
 
-    await expect(handler(event)).rejects.toThrow("Unauthorized");
+    const response = await handler(event);
+
+    expect(response.statusCode).toBe(401);
+    expect(mockCreateAd).not.toHaveBeenCalled();
   });
 
-  it("should validate input before calling service", async () => {
+  it("should return 400 if validation fails", async () => {
     mockValidate.mockImplementation(() => {
-      throw new Error("Validation failed");
+      throw new AppError("Validation failed", 400);
     });
 
-    await expect(handler(mockEvent())).rejects.toThrow("Validation failed");
+    const response = await handler(mockEvent());
 
+    expect(response.statusCode).toBe(400);
     expect(mockCreateAd).not.toHaveBeenCalled();
   });
 });
