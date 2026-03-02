@@ -1,13 +1,14 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { ZodError } from "zod";
-import { AppError, ValidationError } from "./errors";
+import { AppError } from "./errors";
 import { failure } from "./response";
 import { log } from "./logger";
 
 export function apiHandler(
   fn: (event: APIGatewayProxyEvent) => Promise<APIGatewayProxyResult>
 ) {
-  return async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
+  return async (
+    event: APIGatewayProxyEvent
+  ): Promise<APIGatewayProxyResult> => {
     const requestId = event.requestContext.requestId;
     const startTime = Date.now();
 
@@ -25,9 +26,7 @@ export function apiHandler(
       });
 
       return response;
-
     } catch (error: unknown) {
-
       if (error instanceof AppError) {
         log("WARN", "Handled application error", requestId, {
           code: error.code,
@@ -38,16 +37,12 @@ export function apiHandler(
         return failure(error, requestId);
       }
 
-
       log("ERROR", "Unhandled system error", requestId, {
         error: error instanceof Error ? error.message : error,
         durationMs: Date.now() - startTime,
       });
 
-      return failure(
-        new AppError("Unexpected error occurred"),
-        requestId
-      );
+      return failure(new AppError("Unexpected error occurred"), requestId);
     }
   };
 }
