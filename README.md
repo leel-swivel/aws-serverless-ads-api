@@ -1,160 +1,339 @@
 # ads-api
 
-This project contains source code and supporting files for a serverless application that you can deploy with the AWS Serverless Application Model (AWS SAM) command line interface (CLI). It includes the following files and folders:
+Minimal AWS Serverless **Ads API** built with **Node.js + TypeScript**, **API Gateway**, **Lambda**, **DynamoDB**, **S3**, **SNS**, and **Cognito**.
 
-- `src` - Code for the application's Lambda function.
-- `events` - Invocation events that you can use to invoke the function.
-- `__tests__` - Unit tests for the application code. 
-- `template.yaml` - A template that defines the application's AWS resources.
+Authenticated users can create an ad via `POST /api/v1/ads`. The service:
 
-The application uses several AWS resources, including Lambda functions, an API Gateway API, and Amazon DynamoDB tables. These resources are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
+- Validates the request payload.
+- Stores the ad in DynamoDB.
+- Optionally uploads an image (base64 → S3) and returns a presigned URL.
+- Publishes an `AD_CREATED` event to SNS.
+- Emits structured JSON logs including `requestId`.
 
-If you prefer to use an integrated development environment (IDE) to build and test your application, you can use the AWS Toolkit.  
-The AWS Toolkit is an open-source plugin for popular IDEs that uses the AWS SAM CLI to build and deploy serverless applications on AWS. The AWS Toolkit also adds step-through debugging for Lambda function code. 
+The project is packaged and deployed using **AWS SAM** (`template.yaml`) and validated in CI using **GitHub Actions** and **Jest** with high test coverage.
 
-To get started, see the following:
+SonarCloud dashboard: [`leel-swivel_aws-serverless-ads-api`](https://sonarcloud.io/project/overview?id=leel-swivel_aws-serverless-ads-api).
 
-* [CLion](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [GoLand](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [IntelliJ](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [WebStorm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [Rider](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [PhpStorm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [PyCharm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [RubyMine](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [DataGrip](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [VS Code](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/welcome.html)
-* [Visual Studio](https://docs.aws.amazon.com/toolkit-for-visual-studio/latest/user-guide/welcome.html)
+---
 
-## Deploy the sample application
+## Architecture and Tech Stack
 
-The AWS SAM CLI is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. It uses Docker to run your functions in an Amazon Linux environment that matches Lambda. It can also emulate your application's build environment and API.
+- **Runtime**: Node.js 24.x (SAM `Globals.Function.Runtime: nodejs24.x`)
+- **Language**: TypeScript (compiled with `tsc`)
+- **API**: API Gateway REST API  
+  - `POST /api/v1/ads` (protected by Cognito User Pool authorizer)
+- **Lambda**:  
+  - `AdsFunction` → `src/handlers/createAd.handler`
+- **Persistence**:  
+  - DynamoDB table `AdsTable` (primary key: `id`)
+- **Storage**:  
+  - S3 bucket `AdsBucket` for ad images
+- **Events**:  
+  - SNS topic `AdsTopic` (publishes `AD_CREATED` events)
+- **Auth**:  
+  - Cognito User Pool `AdsUserPool` and Client `AdsUserPoolClient`
+- **IaC**:  
+  - `template.yaml` (AWS SAM)
+- **Testing**:  
+  - Jest unit tests (100% statements/lines/functions at time of writing)
+- **CI/CD**:  
+  - `.github/workflows/ci.yml`  
+    - Install dependencies  
+    - Run Jest with coverage  
+    - SonarCloud analysis  
+    - Build TypeScript  
+    - Optional SAM deploy on `master`
 
-To use the AWS SAM CLI, you need the following tools:
+---
 
-* AWS SAM CLI - [Install the AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
-* Node.js - [Install Node.js 20](https://nodejs.org/en/), including the npm package management tool.
-* Docker - [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community).
+## Project Layout
 
-To build and deploy your application for the first time, run the following in your shell:
+- `src/handlers` – Lambda handlers (entrypoint: `createAd.ts`)
+- `src/services` – Business logic (`createAd` service)
+- `src/domain` – Types and mappers (`ad.types.ts`, `ad.mapper.ts`)
+- `src/repositories` – DynamoDB access (`ad.repository.ts`)
+- `src/storage` – S3 image upload & presigned URLs (`image.storage.ts`)
+- `src/events` – SNS publishers (`ad.publisher.ts`)
+- `src/utils` – Validation, error types, logging, handler wrapper, responses
+- `src/models` – Request/response schemas (`ad.schema.ts`)
+- `template.yaml` – SAM template describing API, Lambda, DynamoDB, S3, SNS, Cognito
+- `.github/workflows/ci.yml` – CI workflow
+
+---
+
+## Prerequisites
+
+- **Node.js**: v20+ (CI uses Node 24)
+- **npm**
+- **AWS CLI** configured with credentials
+- **AWS SAM CLI** installed
+- (Optional, for local API emulation) **Docker** for `sam local`
+
+AWS resources (User Pool, DynamoDB, S3, SNS, API Gateway, Lambda) are created by `template.yaml` during `sam deploy`.
+
+---
+
+## Local Setup
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <your-repo-url> ads-api
+   cd ads-api
+   ```
+
+2. **Install dependencies**
+
+   ```bash
+   npm install
+   ```
+
+3. **Run unit tests**
+
+   ```bash
+   npm test               # run all tests
+   npm run test:coverage  # run tests with coverage report
+   ```
+
+4. **Build the project**
+
+   ```bash
+   npm run build
+   ```
+
+This will compile TypeScript into `dist/` and is also used by the CI workflow.
+
+---
+
+## Deploying with AWS SAM
+
+Make sure your AWS CLI is configured (`aws configure`) with an IAM user/role that has permissions to create and update:
+
+- Lambda
+- API Gateway
+- DynamoDB
+- S3
+- SNS
+- Cognito
+- CloudFormation stacks
+
+Minimal policies for the CI/deploy user (high level):
+
+- `AWSCloudFormationFullAccess` (or equivalent limited set to create/update stacks)
+- `AmazonAPIGatewayAdministrator` or fine-grained API Gateway permissions
+- `AWSLambda_FullAccess` or equivalent for Lambda functions/log groups
+- `AmazonDynamoDBFullAccess` for DynamoDB tables used in this stack
+- `AmazonS3FullAccess` (or bucket-scoped) for `AdsBucket`
+- `AmazonSNSFullAccess` (or topic-scoped) for `AdsTopic`
+- `AmazonCognitoPowerUser` (or limited user-pool/client management permissions)
+
+> In a real production setup, these should be scoped to only the specific resources and actions required by this stack.
+
+### Build
 
 ```bash
 sam build
+```
+
+### Deploy (first time)
+
+```bash
 sam deploy --guided
 ```
 
-The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
+During `--guided`, you will be prompted for:
 
-* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
-* **AWS Region**: The AWS region you want to deploy your app to.
-* **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
-* **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
-* **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
+- **Stack Name** (e.g. `ads-api`)
+- **AWS Region** (e.g. `ap-southeast-1`)
+- Whether to allow IAM role creation (`CAPABILITY_IAM`)
+- Whether to save configuration to `samconfig.toml`
 
-The API Gateway endpoint API will be displayed in the outputs when the deployment is complete.
+On success, CloudFormation outputs will include:
 
-## Use the AWS SAM CLI to build and test locally
+- `ApiEndpoint` – full URL for `POST /api/v1/ads`
+- `UserPoolId` – Cognito User Pool ID
+- `UserPoolClientId` – Cognito App Client ID
 
-Build your application by using the `sam build` command.
+Example API endpoint from a deployment:
+
+```text
+https://mgcaffgwbh.execute-api.ap-southeast-1.amazonaws.com/dev/api/v1/ads
+```
+
+---
+
+## Authentication with Cognito (Real User)
+
+The Ads API is protected by a **Cognito User Pool authorizer**. You must send a valid **ID token** in the `Authorization` header to call `POST /api/v1/ads`.
+
+### 1. Generate an ID Token via Cognito `InitiateAuth`
+
+Use the Cognito `InitiateAuth` API with the `USER_PASSWORD_AUTH` flow:
 
 ```bash
-my-application$ sam build
+curl --location 'https://cognito-idp.ap-southeast-1.amazonaws.com/' \
+  --header 'Content-Type: application/x-amz-json-1.1' \
+  --header 'X-Amz-Target: AWSCognitoIdentityProviderService.InitiateAuth' \
+  --data-raw '{
+    "AuthFlow": "USER_PASSWORD_AUTH",
+    "ClientId": "1cionhn1prl2vkd9dfs2n94uga",
+    "AuthParameters": {
+      "USERNAME": "user",
+      "PASSWORD": "Abc1234@"
+    }
+  }'
 ```
 
-The AWS SAM CLI installs dependencies that are defined in `package.json`, creates a deployment package, and saves it in the `.aws-sam/build` folder.
+Response (truncated for brevity) will look like:
 
-Test a single function by invoking it directly with a test event. An event is a JSON document that represents the input that the function receives from the event source. Test events are included in the `events` folder in this project.
+```json
+{
+  "AuthenticationResult": {
+    "AccessToken": "...",
+    "IdToken": "eyJraWQiOiJaYnpLQ0hS...",
+    "RefreshToken": "...",
+    "ExpiresIn": 3600,
+    "TokenType": "Bearer"
+  },
+  "ChallengeParameters": {}
+}
+```
 
-Run functions locally and invoke them with the `sam local invoke` command.
+Take the **`IdToken`** value from `AuthenticationResult.IdToken`. This is what you use as the bearer token for the Ads API.
+
+> Note: The `ClientId` shown above (`1cionhn1prl2vkd9dfs2n94uga`) must match the deployed `AdsUserPoolClient`. If you re-deploy in a new account/region, your `ClientId` will be different.
+
+### 2. Call `POST /api/v1/ads` with the ID Token
+
+Once you have the `IdToken`, call the Ads API like this:
 
 ```bash
-my-application$ sam local invoke putItemFunction --event events/event-post-item.json
-my-application$ sam local invoke getAllItemsFunction --event events/event-get-all-items.json
+curl --location 'https://mgcaffgwbh.execute-api.ap-southeast-1.amazonaws.com/dev/api/v1/ads' \
+  --header 'Authorization: Bearer <ID_TOKEN_FROM_COGNITO>' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "title": "50% Off",
+    "price": 150
+  }'
 ```
 
-The AWS SAM CLI can also emulate your application's API. Use the `sam local start-api` command to run the API locally on port 3000.
+Example with a real token (truncated here for readability):
 
 ```bash
-my-application$ sam local start-api
-my-application$ curl http://localhost:3000/
+curl --location 'https://mgcaffgwbh.execute-api.ap-southeast-1.amazonaws.com/dev/api/v1/ads' \
+  --header 'Authorization: Bearer eyJraWQiOiJaYnpLQ0hSdFFud2JPeGN1eWxxMzJCRVlBbEhNUGxYcjAyV2g0akRIK08wPSIsImFsZyI6IlJTMjU2In0.eyJzdWIiOiJkOWJhYjUzYy00MDgxLTcwOGYtOGIxZS05MTk2MjU4YWY2MGQiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLmFwLXNvdXRoZWFzdC0xLmFtYXpvbmF3cy5jb21cL2FwLXNvdXRoZWFzdC0xX1p6VE5LbHBGVyIsImNvZ25pdG86dXNlcm5hbWUiOiJ1c2VyIiwib3JpZ2luX2p0aSI6IjQyYzNmYzkzLWMxMzYtNDdmOS05MDY2LTc3ZjBiOWFlNTNkMSIsImF1ZCI6IjFjaW9uaG4xcHJsMnZrZDlkZnMybjk0dWdhIiwiZXZlbnRfaWQiOiIzZWI5MmE4Ni0zMDA3LTQ0N2YtOTQyNi00NjlmNmFiOWE2MDIiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTc3MjQzODczMCwiZXhwIjoxNzcyNDQyMzMwLCJpYXQiOjE3NzI0Mzg3MzAsImp0aSI6IjE3NjFmMDc1LTRjZGItNDIyMC04ZGQ3LWNkOWIzNGZjYjYwNSIsImVtYWlsIjoidXNlckBzd2l2ZWwuY29tLmF1In0.T6ViLzl3jBEASEUAOB49Y6CirQbYugl8APprbWJpTgqsCEUpkiUgTY5yblK1UZR6c-JULJlT8WY5bAPXwVsumwnuyRx4uslRb0F31RMT8E-i19htYoge_WGJ7raXe3fo9DMgKdRP8sU79XpPaCLnXG4kq8K5kAG_CMWI-_JYj0XPXawnoQxJMWaHxqInm0FZCjYoEHDfDrp6jcc9KFOswdV6g-uWCzWOEZSf6PBs11R_vw0AmhTTaJ8bh5BvV4_kKHEqEBqxcx1trRvUBgB5EW-NUxGBuniO5hejjpXthkU73HdywVktRrGcZeOFBupsjFBSPt9WJxrf4v-A4x0WIg' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "title": "50% Off",
+    "price": 150
+  }'
 ```
 
-The AWS SAM CLI reads the application template to determine the API's routes and the functions that they invoke. The `Events` property on each function's definition includes the route and method for each path.
+If the token is valid and the payload passes validation, the API returns a `201 Created` response with the created ad (including optional image info if provided).
 
-```yaml
-      Events:
-        Api:
-          Type: Api
-          Properties:
-            Path: /
-            Method: GET
+### Request Body
+
+```json
+{
+  "title": "string",
+  "price": 123.45,
+  "imageBase64": "data:image/jpeg;base64,..." // optional
+}
 ```
 
-## Add a resource to your application
-The application template uses AWS SAM to define application resources. AWS SAM is an extension of AWS CloudFormation with a simpler syntax for configuring common serverless application resources, such as functions, triggers, and APIs. For resources that aren't included in the [AWS SAM specification](https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md), you can use the standard [AWS CloudFormation resource types](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html).
+Validation is implemented with Zod (`createAdSchema`) and enforced in the handler via the `validate` utility.
 
-Update `template.yaml` to add a dead-letter queue to your application. In the **Resources** section, add a resource named **MyQueue** with the type **AWS::SQS::Queue**. Then add a property to the **AWS::Serverless::Function** resource named **DeadLetterQueue** that targets the queue's Amazon Resource Name (ARN), and a policy that grants the function permission to access the queue.
+---
 
-```
-Resources:
-  MyQueue:
-    Type: AWS::SQS::Queue
-  getAllItemsFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: src/handlers/get-all-items.getAllItemsHandler
-      Runtime: nodejs20.x
-      DeadLetterQueue:
-        Type: SQS 
-        TargetArn: !GetAtt MyQueue.Arn
-      Policies:
-        - SQSSendMessagePolicy:
-            QueueName: !GetAtt MyQueue.QueueName
-```
+## Local Development Notes
 
-The dead-letter queue is a location for Lambda to send events that could not be processed. It's only used if you invoke your function asynchronously, but it's useful here to show how you can modify your application's resources and function configuration.
+### Running unit tests (no AWS required)
 
-Deploy the updated application.
+Unit tests mock AWS SDK clients (S3, SNS, DynamoDB) and Cognito context, so you can run them without any AWS account:
 
 ```bash
-my-application$ sam deploy
+npm test
+npm run test:coverage
 ```
 
-Open the [**Applications**](https://console.aws.amazon.com/lambda/home#/applications) page of the Lambda console, and choose your application. When the deployment completes, view the application resources on the **Overview** tab to see the new resource. Then, choose the function to see the updated configuration that specifies the dead-letter queue.
+Tests cover:
 
-## Fetch, tail, and filter Lambda function logs
+- Handler (`createAd`) success and major error paths (unauthorized, validation failure)
+- Service layer (`createAd` → DynamoDB + S3 + SNS + mapping)
+- S3 image upload (format, type, size checks, presigned URL)
+- DynamoDB repository behavior
+- SNS publisher
+- Validation utilities, error types, response helpers, and handler wrapper
 
-To simplify troubleshooting, the AWS SAM CLI has a command called `sam logs`. `sam logs` lets you fetch logs that are generated by your Lambda function from the command line. In addition to printing the logs on the terminal, this command has several nifty features to help you quickly find the bug.
+### `sam local` (optional)
 
-**NOTE:** This command works for all Lambda functions, not just the ones you deploy using AWS SAM.
+If you have Docker installed, you can emulate the API locally:
 
 ```bash
-my-application$ sam logs -n putItemFunction --stack-name sam-app --tail
+sam build
+sam local start-api
 ```
 
-**NOTE:** This uses the logical name of the function within the stack. This is the correct name to use when searching logs inside an AWS Lambda function within a CloudFormation stack, even if the deployed function name varies due to CloudFormation's unique resource name generation.
+By default SAM does not automatically emulate Cognito authorizers; for local-only testing you can:
 
-You can find more information and examples about filtering Lambda function logs in the [AWS SAM CLI documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-logging.html).
+- Use `sam local invoke` with a custom event file that includes `requestContext.authorizer.claims.sub`, or
+- Temporarily disable the authorizer in a local-only template variant (not recommended for production templates).
 
-## Unit tests
+For this project, end-to-end auth is demonstrated against a real deployed stack using the Cognito flows above, and local behavior is primarily verified via unit tests.
 
-Tests are defined in the `__tests__` folder in this project. Use `npm` to install the [Jest test framework](https://jestjs.io/) and run unit tests.
+---
 
-```bash
-my-application$ npm install
-my-application$ npm run test
-```
+## CI/CD (GitHub Actions)
+
+The workflow in `.github/workflows/ci.yml` performs:
+
+1. **Build & Test** (`build-and-test` job)
+   - Checkout repository
+   - Setup Node.js 24
+   - `npm ci`
+   - `npm run test:coverage`
+   - SonarCloud scan (using `SONAR_TOKEN` secret, publishing `coverage/lcov.info`)
+   - `npm run build`
+
+2. **Deploy** (`deploy` job, optional)
+   - Runs only when `github.ref == 'refs/heads/master'`
+   - Checkout repo
+   - Setup Node.js 20
+   - `npm ci`
+   - Install `esbuild` globally
+   - Configure AWS credentials (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` secrets)
+   - `sam build`
+   - `sam deploy` with:
+     - `--stack-name ads-api`
+     - `--capabilities CAPABILITY_IAM`
+     - `--no-confirm-changeset`
+     - `--no-fail-on-empty-changeset`
+     - `--resolve-s3`
+
+Make sure the following GitHub repository secrets are configured for deploy to work:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_REGION`
+- `SONAR_TOKEN`
+
+---
+
+## Known Limitations
+
+- Only a single `POST /api/v1/ads` endpoint is implemented (no listing/updating/deleting ads).
+- Image upload currently supports only types configured via `ALLOWED_IMAGE_TYPES` (by default `image/jpeg,image/png`).
+- Authentication and Cognito integration are designed for the assessment scenario; user management flows (sign-up, confirmation, password reset) are not included.
+
+---
 
 ## Cleanup
 
-To delete the sample application that you created, use the AWS CLI. Assuming you used your project name for the stack name, you can run the following:
+To delete the deployed stack and all associated resources:
 
 ```bash
 sam delete --stack-name ads-api
 ```
 
-## Resources
+Confirm the deletion when prompted in the terminal.
 
-For an introduction to the AWS SAM specification, the AWS SAM CLI, and serverless application concepts, see the [AWS SAM Developer Guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html).
-
-Next, you can use the AWS Serverless Application Repository to deploy ready-to-use apps that go beyond Hello World samples and learn how authors developed their applications. For more information, see the [AWS Serverless Application Repository main page](https://aws.amazon.com/serverless/serverlessrepo/) and the [AWS Serverless Application Repository Developer Guide](https://docs.aws.amazon.com/serverlessrepo/latest/devguide/what-is-serverlessrepo.html).
