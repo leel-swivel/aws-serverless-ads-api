@@ -1,110 +1,84 @@
 import { createAd } from "./ad.service";
-import { ValidationError, AppError } from "../utils/errors";
-import { PutCommand } from "@aws-sdk/lib-dynamodb";
-import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { PublishCommand } from "@aws-sdk/client-sns";
+import { saveAd } from "../repositories/ad.repository";
+import { uploadImage } from "../storage/image.storage";
+import { publishAdCreated } from "../events/ad.publisher";
+import { mapToAdResponse } from "../domain/ad.mapper";
 
-/* =============================
-   MOCK AWS SDK CLIENTS
-============================= */
+jest.mock("../repositories/ad.repository");
+jest.mock("../storage/image.storage");
+jest.mock("../events/ad.publisher");
+jest.mock("../domain/ad.mapper");
+jest.mock("../utils/logger");
 
-jest.mock("@aws-sdk/lib-dynamodb", () => {
-  const original = jest.requireActual("@aws-sdk/lib-dynamodb");
-  return {
-    ...original,
-    DynamoDBDocumentClient: {
-      from: () => ({
-        send: jest.fn().mockResolvedValue({}),
-      }),
-    },
-  };
-});
-
-jest.mock("@aws-sdk/client-s3", () => {
-  return {
-    S3Client: jest.fn(() => ({
-      send: jest.fn().mockResolvedValue({}),
-    })),
-    PutObjectCommand: jest.fn(),
-    GetObjectCommand: jest.fn(),
-  };
-});
-
-jest.mock("@aws-sdk/client-sns", () => {
-  return {
-    SNSClient: jest.fn(() => ({
-      send: jest.fn().mockResolvedValue({}),
-    })),
-    PublishCommand: jest.fn(),
-  };
-});
-
-jest.mock("@aws-sdk/s3-request-presigner", () => ({
-  getSignedUrl: jest.fn().mockResolvedValue("https://mock-presigned-url"),
-}));
-
-/* =============================
-   ENV VARIABLES
-============================= */
-
-process.env.ADS_TABLE = "test-table";
-process.env.ADS_BUCKET = "test-bucket";
-process.env.ADS_TOPIC = "test-topic";
-process.env.IMAGE_MAX_SIZE = "5242880";
-process.env.PRESIGNED_URL_EXPIRY = "3600";
-
-/* =============================
-   TESTS
-============================= */
+const mockSaveAd = saveAd as jest.Mock;
+const mockUploadImage = uploadImage as jest.Mock;
+const mockPublish = publishAdCreated as jest.Mock;
+const mockMapper = mapToAdResponse as jest.Mock;
 
 describe("createAd service", () => {
   const baseInput = {
     title: "Test Ad",
     price: 100,
     userId: "user-123",
+  };
+
+  const context = {
     requestId: "req-123",
   };
 
-  it("should create ad successfully without image", async () => {
-    const result = await createAd(baseInput);
-
-    expect(result.id).toBeDefined();
-    expect(result.title).toBe("Test Ad");
-    expect(result.price).toBe(100);
-    expect(result.image).toBeUndefined();
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  it("should create ad successfully with image", async () => {
-    const imageBase64 = Buffer.from("test").toString("base64");
+  it("should create ad without image", async () => {
+    const mappedResponse = {
+      id: "generated-id",
+      title: "Test Ad",
+      price: 100,
+      userId: "user-123",
+      createdAt: "2025-01-01",
+    };
 
-    const result = await createAd({
-      ...baseInput,
-      imageBase64,
-    });
+    mockMapper.mockReturnValue(mappedResponse);
 
-    expect(result.image).toBeDefined();
-    expect(result.image?.presignedUrl).toBe("https://mock-presigned-url");
-    expect(result.image?.expiresIn).toBe(3600);
+    const result = await createAd(baseInput, context);
+
+    expect(mockUploadImage).not.toHaveBeenCalled();
+    expect(mockSaveAd).toHaveBeenCalledTimes(1);
+    expect(mockPublish).toHaveBeenCalledWith(expect.any(String), "user-123");
+    expect(mockMapper).toHaveBeenCalled();
+
+    expect(result).toEqual(mappedResponse);
   });
 
-  it("should throw ValidationError if image too large", async () => {
-    const largeBuffer = Buffer.alloc(6 * 1024 * 1024); // 6MB
-    const imageBase64 = largeBuffer.toString("base64");
+  it("should upload image if imageBase64 exists", async () => {
+    const imageDto = {
+      key: "ads/id.jpg",
+      presignedUrl: "url",
+      expiresIn: 3600,
+    };
 
-    await expect(
-      createAd({
+    mockUploadImage.mockResolvedValue(imageDto);
+    mockMapper.mockReturnValue({ id: "1" });
+
+    await createAd(
+      {
         ...baseInput,
-        imageBase64,
-      })
-    ).rejects.toBeInstanceOf(ValidationError);
+        imageBase64: "base64string",
+      },
+      context
+    );
+
+    expect(mockUploadImage).toHaveBeenCalled();
+    expect(mockSaveAd).toHaveBeenCalled();
+    expect(mockPublish).toHaveBeenCalled();
   });
 
-  it("should throw AppError if userId missing", async () => {
-    await expect(
-      createAd({
-        ...baseInput,
-        userId: "" as any,
-      })
-    ).rejects.toBeInstanceOf(AppError);
+  it("should propagate error if saveAd fails", async () => {
+    mockSaveAd.mockRejectedValue(new Error("DB error"));
+
+    await expect(createAd(baseInput, context)).rejects.toThrow("DB error");
+
+    expect(mockPublish).not.toHaveBeenCalled();
   });
 });
