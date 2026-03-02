@@ -1,5 +1,3 @@
-// handlers/createAd.ts
-
 import { APIGatewayProxyEvent } from "aws-lambda";
 import { createAdSchema } from "../models/ad.schema";
 import { success } from "../utils/response";

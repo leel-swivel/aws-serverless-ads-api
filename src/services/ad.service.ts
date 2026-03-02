@@ -22,7 +22,7 @@ export async function createAd(
   const createdAt = new Date().toISOString();
 
   let imageDto: AdImageDto | undefined;
-  
+
   if (data.imageBase64) {
     imageDto = await uploadImage(id, data.imageBase64);
   }

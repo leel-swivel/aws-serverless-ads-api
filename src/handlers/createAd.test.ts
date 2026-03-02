@@ -36,8 +36,6 @@ describe("CreateAd Handler", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-
-    // Default mock behavior for failure
     mockFailure.mockImplementation((error: any) => ({
       statusCode: error.statusCode || 500,
       body: JSON.stringify({ message: error.message }),

@@ -10,7 +10,7 @@ export function success(
     statusCode,
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      "status": "success",
+      status: "success",
       data,
       requestId,
     }),
@@ -18,22 +18,22 @@ export function success(
 }
 
 export function failure(
-    error: AppError,
-    requestId: string
-  ): APIGatewayProxyResult {
-    return {
-      statusCode: error.statusCode || 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        status: "error",
-        error: {
-          code: error.code || "INTERNAL_ERROR",
-          message: error.message,
-          ...(error instanceof ValidationError && error.details
-            ? { details: error.details }
-            : {}),
-        },
-        requestId,
-      }),
-    };
-  }
+  error: AppError,
+  requestId: string
+): APIGatewayProxyResult {
+  return {
+    statusCode: error.statusCode || 500,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      status: "error",
+      error: {
+        code: error.code || "INTERNAL_ERROR",
+        message: error.message,
+        ...(error instanceof ValidationError && error.details
+          ? { details: error.details }
+          : {}),
+      },
+      requestId,
+    }),
+  };
+}

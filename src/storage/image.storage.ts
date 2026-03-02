@@ -1,6 +1,8 @@
-// storage/image.storage.ts
-
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const s3 = new S3Client({});
@@ -8,10 +10,7 @@ const BUCKET_NAME = process.env.ADS_BUCKET!;
 const IMAGE_MAX_SIZE = Number(process.env.IMAGE_MAX_SIZE ?? 5 * 1024 * 1024);
 const PRESIGNED_URL_EXPIRY = Number(process.env.PRESIGNED_URL_EXPIRY ?? 3600);
 
-export async function uploadImage(
-  id: string,
-  base64: string
-) {
+export async function uploadImage(id: string, base64: string) {
   const buffer = Buffer.from(base64, "base64");
 
   if (buffer.length > IMAGE_MAX_SIZE) {
