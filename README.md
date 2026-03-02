@@ -240,10 +240,10 @@ GitHub Actions workflow performs:
 A ready-to-use Postman setup is available:
 
 ### 🔹 Collection
-[Download Collection](./postman/Ads-API.postman_collection.json)
+[Download Collection](./postman/Ads%20API.postman_collection.json)
 
 ### 🔹 Environment
-[Download Environment](./postman/Ads-API.postman_environment.json)
+[Download Environment](./postman/Ads-Api.postman_environment.json)
 
 ### How to Use
 
