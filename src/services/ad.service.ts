@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { saveAd } from "../repositories/ad.repository";
 import { uploadImage } from "../storage/image.storage";
 import { publishAdCreated } from "../events/ad.publisher";

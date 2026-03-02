@@ -7,38 +7,42 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { AppError } from "../utils/errors";
 
 const s3 = new S3Client({});
+
 const BUCKET_NAME = process.env.ADS_BUCKET!;
 const IMAGE_MAX_SIZE = Number(process.env.IMAGE_MAX_SIZE ?? 5 * 1024 * 1024);
 const PRESIGNED_URL_EXPIRY = Number(process.env.PRESIGNED_URL_EXPIRY ?? 3600);
 
-const ALLOWED_TYPES = (process.env.ALLOWED_IMAGE_TYPES ?? "")
-  .split(",")
-  .map((type) => type.trim())
-  .filter(Boolean);
+const ALLOWED_TYPES = new Set(
+  (process.env.ALLOWED_IMAGE_TYPES ?? "")
+    .split(",")
+    .map((type) => type.trim())
+    .filter(Boolean)
+);
 
-  function parseBase64Image(base64: string): {
-    mimeType: string;
-    data: string;
-  } {
-    const matches = base64.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
-  
-    if (!matches) {
-      throw new AppError("Invalid image format", 400, "INVALID_IMAGE_FORMAT");
-    }
-  
-    const mimeType = matches[1];
-    const data = matches[2];
-  
-    if (!ALLOWED_TYPES.includes(mimeType)) {
-      throw new AppError(
-        `Unsupported image type: ${mimeType}`,
-        400,
-        "UNSUPPORTED_IMAGE"
-      );
-    }
-  
-    return { mimeType, data };
+function parseBase64Image(base64: string): {
+  mimeType: string;
+  data: string;
+} {
+  const regex = /^data:(image\/[a-zA-Z+]+);base64,(.+)$/;
+  const matches = regex.exec(base64);
+
+  if (!matches) {
+    throw new AppError("Invalid image format", 400, "INVALID_IMAGE_FORMAT");
   }
+
+  const mimeType = matches[1];
+  const data = matches[2];
+
+  if (!ALLOWED_TYPES.has(mimeType)) {
+    throw new AppError(
+      `Unsupported image type: ${mimeType}`,
+      400,
+      "UNSUPPORTED_IMAGE"
+    );
+  }
+
+  return { mimeType, data };
+}
 
 export async function uploadImage(id: string, base64: string) {
   const { mimeType, data } = parseBase64Image(base64);
