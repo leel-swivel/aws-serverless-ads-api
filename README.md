@@ -4,21 +4,21 @@ A minimal serverless Ads API built with **Node.js + TypeScript** using AWS servi
 
 ### Table of Contents
 
-- [Architecture Diagram](#-architecture-diagram)
+- [Architecture Diagram](#architecture-diagram)
 - [Architecture](#architecture)
 - [Technologies Used](#technologies-used)
 - [Project Structure](#project-structure)
 - [Authentication (Cognito)](#authentication-cognito)
 - [API Endpoint](#api-endpoint)
 - [Image Upload](#image-upload)
-- [Setup Instructions](#--setup-instructions)
-- [Deploy with AWS SAM](#--deploy-with-aws-sam)
-- [Run Tests](#--run-tests)
-- [Code Quality](#--code-quality)
-- [CI/CD](#-cicd)
+- [Setup Instructions](#setup-instructions)
+- [Deploy with AWS SAM](#deploy-with-aws-sam)
+- [Run Tests](#run-tests)
+- [Code Quality](#code-quality)
+- [CI/CD](#cicd)
 - [Postman Collection](#postman-collection)
 - [Deployed API](#deployed-api)
-- [Known Limitations](#--known-limitations)
+- [Known Limitations](#known-limitations)
 
 ##  Architecture Diagram
 
