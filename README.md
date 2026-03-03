@@ -2,6 +2,10 @@
 
 ![Architecture Diagram](./postman/diagram.png)
 
+### Code-Level Request Flow
+
+![Request Flow Diagram](./assets/request-flow.png)
+
 
 # AWS Serverless Ads API
 
