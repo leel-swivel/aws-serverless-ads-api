@@ -46,3 +46,28 @@ export function apiHandler(
     }
   };
 }
+
+export function authedApiHandler(
+  fn: (
+    event: APIGatewayProxyEvent,
+    userId: string
+  ) => Promise<APIGatewayProxyResult>
+) {
+  return apiHandler(async (event: APIGatewayProxyEvent) => {
+    const requestId = event.requestContext.requestId;
+    const userId = event.requestContext.authorizer?.claims?.sub as
+      | string
+      | undefined;
+
+    if (!userId) {
+      log("WARN", "Unauthorized access attempt", requestId, {
+        path: event.path,
+        method: event.httpMethod,
+      });
+
+      throw new AppError("Unauthorized", 401, "UNAUTHORIZED");
+    }
+
+    return fn(event, userId);
+  });
+}
